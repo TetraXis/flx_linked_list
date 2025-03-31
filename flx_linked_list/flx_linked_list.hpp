@@ -8,9 +8,13 @@ namespace flx
 	struct dll_element
 	{
 	flx_public:
-		ty* next = nullptr;
-		ty* prev = nullptr;
+		dll_element<ty>* next = nullptr;
+		dll_element<ty>* prev = nullptr;
 		ty data{};
+
+	flx_public:
+		dll_element() = default;
+		dll_element(const ty& new_data) : data(new_data){}
 	};
 
 	// TODO: Make it like a vector, so elements are in order one by one.
