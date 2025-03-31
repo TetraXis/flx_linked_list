@@ -17,7 +17,7 @@ namespace flx
 		dll_element(const ty& new_data) : data(new_data){}
 	};
 
-	// TODO: Make it like a vector, so elements are in order one by one.
+	// TODO: Make it like a vector, so elements are in order one by one. 
 	template<typename ty>
 	struct dll
 	{
@@ -69,7 +69,7 @@ namespace flx
 	template<typename ty>
 	inline ty dll<ty>::pop_back()
 	{
-		// TODO: ADD
+		// TODO: add
 	}
 
 	template<typename ty>
