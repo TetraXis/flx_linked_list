@@ -3,6 +3,7 @@
 
 int main()
 {
-	flx::dll<int> a;
-	a.push_back(15);
+
+
+	return 0;
 }
