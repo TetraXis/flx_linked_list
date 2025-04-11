@@ -5,6 +5,11 @@
 
 #include "flx_types.hpp"
 
+/// I NEED TO USE POINTERS TO NEXT AND PREVIOUS
+/// OR I CANT SWAP NODES IN VECTOR
+/// BUT THEN I NEED TO CATCH WHEN VECTOR MOVES, OR BETTER YET MAKE MY OWN
+/// DARRAY
+
 /// <summary>
 /// This double linked list is based on a std::vector
 /// This allows for a cache frindly approach
@@ -79,7 +84,6 @@ namespace flx
 		reverse_iterator<const_iterator<ty>> crend();
 
 
-		template<typename ty>
 		struct node
 		{
 			friend contiguous_double_linked_list;
@@ -96,7 +100,6 @@ namespace flx
 			}
 		};
 
-		template<typename ty>
 		struct iterator
 		{
 			friend contiguous_double_linked_list;
@@ -156,11 +159,10 @@ namespace flx
 
 			bool operator != (const iterator& other) const
 			{
-				return !(*this == other);
+				return current_idx != other.current_idx || &nodes != &other.nodes;
 			}
 		};
 
-		template<typename ty>
 		struct const_iterator
 		{
 			friend contiguous_double_linked_list;
@@ -181,13 +183,13 @@ namespace flx
 				return nodes[current_idx].data;
 			}
 
-			iterator<ty>& operator ++ () // prefix ++
+			const_iterator<ty>& operator ++ () // prefix ++
 			{
 				current_idx = nodes[current_idx].next;
 				return *this;
 			}
 
-			iterator<ty>& operator -- () // prefix --
+			const_iterator<ty>& operator -- () // prefix --
 			{
 				current_idx = nodes[current_idx].prev;
 				return *this;
@@ -213,14 +215,14 @@ namespace flx
 				return result;
 			}
 
-			bool operator == (const iterator<ty>& other) const
+			bool operator == (const const_iterator<ty>& other) const
 			{
 				return current_idx == other.current_idx && &nodes == &other.nodes;
 			}
 
-			bool operator != (const iterator<ty>& other) const
+			bool operator != (const const_iterator<ty>& other) const
 			{
-				return !(*this == other);
+				return current_idx != other.current_idx || &nodes != &other.nodes;;
 			}
 		};
 
@@ -271,19 +273,19 @@ namespace flx
 				return result;
 			}
 
-			auto operator * () // "auto" because we dont know iter_ty<ty>'s `ty` here
+			ty operator * ()
 			{
 				return *iter;
 			}
 
 			bool operator == (const iter_ty& other) const
 			{
-				return iter == other;
+				return iter.iter == other.iter;
 			}
 
 			bool operator != (const iter_ty& other) const
 			{
-				return iter != other;
+				return iter.iter != other.iter;
 			}
 		};
 	};
@@ -292,13 +294,13 @@ namespace flx
 	template<typename ty>
 	inline ty& contiguous_double_linked_list<ty>::front()
 	{
-		return nodes[front_idx];
+		return nodes[front_idx].data;
 	}
 
 	template<typename ty>
 	inline ty& contiguous_double_linked_list<ty>::back()
 	{
-		return nodes[back_idx];
+		return nodes[back_idx].data;
 	}
 
 	template<typename ty>
@@ -331,7 +333,7 @@ namespace flx
 	template<typename ty>
 	inline ty contiguous_double_linked_list<ty>::pop_back()
 	{
-		assert(back_idx != NULLNODE && "pop_back called on empty list");
+		assert(size() > 0 && "pop_back called on empty list");
 
 		ty value = nodes[back_idx];
 
@@ -386,7 +388,7 @@ namespace flx
 	template<typename ty>
 	inline ty contiguous_double_linked_list<ty>::pop_front()
 	{
-		assert(front_idx != NULLNODE && "pop_front called on empty list");
+		assert(size() > 0 && "pop_front called on empty list");
 
 		ty value = nodes[front_idx];
 
@@ -422,7 +424,8 @@ namespace flx
 
 		if (where.current_idx == front_idx)
 		{
-			front_idx = new_idx;
+			push_front(value);
+			return;
 		}
 
 		nodes[new_idx].next = where.current_idx;
@@ -466,16 +469,39 @@ namespace flx
 	{
 		assert(size() > 0 && "erase attempt on empty list");
 		assert(first.current_idx < size() && "erase first iterator is out of bounds");
-		assert(last.current_idx == NONE || last.current_idx < size() && "erase last iterator is out of bounds");
+		assert(last.current_idx == NULLNODE || last.current_idx < size() && "erase last iterator is out of bounds");
 		assert(first.nodes == nodes && "erase first iterator is from other list");
 		assert(last.nodes == nodes && "erase last iterator is from other list");
 
 		u64 pos = first.current_idx;
 
-		if (pos == front_idx && last.current_idx == NONE)
+		if (first.current_idx == front_idx && last.current_idx == NULLNODE)
 		{
 			clear();
 			return end();
+		}
+
+		// erasing from `front_idx`, only one node reconnection needed
+		if (first.current_idx == front_idx)
+		{
+			// `last` garanteed to be not `NULLNODE`
+			front_idx = last.current_idx; // since `last` won't get erased
+			nodes[front_idx].prev = NULLNODE;
+		}
+
+		// erasing from `back_idx`, only one node reconnection needed
+		if (last.current_idx == NULLNODE)
+		{
+			// `first` garanteed to be not `front_idx`
+			back_idx = nodes[first.current_idx].prev;
+			nodes[back_idx].next = NULLNODE;
+		}
+
+		// erasing chunk in the middle, both node recconections are required
+		if (first.current_idx != front_idx && last.current_idx != NULLNODE)
+		{
+			nodes[nodes[first.current_idx].prev].next = last.current_idx; // since `last` won't get erased
+			nodes[last.current_idx].prev = nodes[first.current_idx].prev; // since `last` won't get erased
 		}
 
 		u64 distance = 0;
@@ -489,47 +515,112 @@ namespace flx
 			++pos;
 		}
 
-		//TODO: finish edge cases
+		nodes.erase(nodes.end() - distance, nodes.end());
 
-		// TODO: Check if rbegin is correct here
-		nodes.erase(nodes.rbegin() + distance, nodes.end());
-
-		if (first.current_idx == front_idx)
-		{
-
-		}
+		return last;
 	}
 
 	template<typename ty>
 	inline bool contiguous_double_linked_list<ty>::empty() const
 	{
-		return false;
+		return nodes.size() == 0;
 	}
 
 	template<typename ty>
 	inline void contiguous_double_linked_list<ty>::clear()
 	{
+		front_idx = NULLNODE;
+		back_idx = NULLNODE;
+		nodes.clear();
 	}
 
 	template<typename ty>
 	inline u64 contiguous_double_linked_list<ty>::size() const
 	{
-		return u64();
+		return nodes.size();
 	}
 
 	template<typename ty>
-	inline void contiguous_double_linked_list<ty>::swap(u64, u64)
+	inline void contiguous_double_linked_list<ty>::swap(u64 where_a, u64 where_b)
 	{
+		assert(where_a < size() && where_b < size() && "swap attempt outside of bounds");
+
+		u64 a_idx = front_idx;
+		u64 b_idx = front_idx;
+
+		while (where_a > 0)
+		{
+			a_idx = nodes[a_idx].next;
+			--where_a;
+		}
+
+		while (where_b > 0)
+		{
+			b_idx = nodes[b_idx].next;
+			--where_b;
+		}
+
+		std::swap(nodes[a_idx], nodes[b_idx]);
 	}
 
 	template<typename ty>
 	inline void contiguous_double_linked_list<ty>::reverse()
 	{
+		std::swap(front_idx, back_idx);
+		for (u64 i = 0; i < nodes.size(); i++)
+		{
+			std::swap(nodes[i].next, nodes[i].prev);
+		}
 	}
 
 	template<typename ty>
-	inline void contiguous_double_linked_list<ty>::unique(const ty&)
+	inline void contiguous_double_linked_list<ty>::unique(const ty& value)
 	{
+		u64 value_idx = front_idx;
+		u64 erased_amount = 0;
+
+		while (value_idx != NULLNODE && nodes[value_idx].data != value)
+		{
+			value_idx = nodes[value_idx].next;
+		}
+		if (value_idx == NULLNODE)
+		{
+			return;
+		}
+
+		// dont need to worry about `front_idx`
+		while (back_idx != NULLNODE && nodes[back_idx].data == value)
+		{
+			back_idx = nodes[back_idx].prev;
+		}
+		if (back_idx == NULLNODE)
+		{
+			clear();
+			return;
+		}
+
+		value_idx = nodes[value_idx].next;
+
+		while (value_idx != NULLNODE)
+		{
+			if (nodes[value_idx].data == value)
+			{
+				// no need to check for `prev`, it will always be there
+				nodes[nodes[value_idx].prev].next = nodes[value_idx].next;
+
+				if (nodes[value_idx].next != NULLNODE)
+				{
+					nodes[nodes[value_idx].next].prev = nodes[value_idx].prev;
+				}
+
+				std::swap(nodes[value_idx], nodes[nodes.size() - 1 - erased_amount]);
+				++erased_amount;
+			}
+			value_idx = nodes[value_idx].next;
+		}
+
+		nodes.erase(nodes.end() - erased_amount, nodes.end());
+		return;
 	}
 
 	template<typename ty>
@@ -559,24 +650,24 @@ namespace flx
 	template<typename ty>
 	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator<ty>> contiguous_double_linked_list<ty>::rbegin()
 	{
-		return reverse_iterator<iterator<ty>>(nodes, back_idx);
+		return reverse_iterator<iterator<ty>>(iterator<ty>(nodes, back_idx));
 	}
 
 	template<typename ty>
 	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator<ty>> contiguous_double_linked_list<ty>::rend()
 	{
-		return reverse_iterator<iterator<ty>>(nodes, NULLNODE);
+		return reverse_iterator<iterator<ty>>(iterator<ty>(nodes, NULLNODE));
 	}
 
 	template<typename ty>
 	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator<ty>> contiguous_double_linked_list<ty>::crbegin()
 	{
-		return reverse_iterator<const_iterator<ty>>(nodes, back_idx);
+		return reverse_iterator<const_iterator<ty>>(iterator<ty>(nodes, back_idx));
 	}
 
 	template<typename ty>
 	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator<ty>> contiguous_double_linked_list<ty>::crend()
 	{
-		return reverse_iterator<const_iterator<ty>>(nodes, NULLNODE);
+		return reverse_iterator<const_iterator<ty>>(iterator<ty>(nodes, NULLNODE));
 	}
 }
