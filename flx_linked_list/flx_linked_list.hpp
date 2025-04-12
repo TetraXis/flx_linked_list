@@ -5,16 +5,13 @@
 
 #include "flx_types.hpp"
 
-/// I NEED TO USE POINTERS TO NEXT AND PREVIOUS
-/// OR I CANT SWAP NODES IN VECTOR
-/// BUT THEN I NEED TO CATCH WHEN VECTOR MOVES, OR BETTER YET MAKE MY OWN
-/// DARRAY
-
 /// <summary>
-/// This double linked list is based on a std::vector
+/// This double linked list is backed by an std::vector
 /// This allows for a cache frindly approach
 /// Because std::vector will move data at some point,
 /// nodes will use indexes to point to `next` and `prev`.
+/// 
+/// When moving nodes inside std::vector, neigbours should be updated.
 /// 
 /// Because at some time data will be moved, taking pointers from it
 /// is dangerous.
@@ -33,57 +30,6 @@ namespace flx
 	{
 		static constexpr u64 NULLNODE = ~0ull;
 
-		template<typename ty>
-		struct node;
-
-		template<typename ty>
-		struct iterator;
-
-		template<typename ty>
-		struct const_iterator;
-
-		template<typename iter_ty>
-		struct reverse_iterator;
-
-	flx_private:
-		u64 front_idx = NULLNODE;
-		u64 back_idx = NULLNODE;
-		std::vector<node<ty>> nodes{};
-
-	flx_public:
-
-		ty& front();
-		ty& back();
-
-		void push_back(const ty&);
-		ty pop_back();
-		void push_front(const ty&);
-		ty pop_front();
-		iterator<ty> insert(const const_iterator<ty>&, const ty&);
-		iterator<ty> erase(const const_iterator<ty>&);
-		iterator<ty> erase(const const_iterator<ty>&, const const_iterator<ty>&);
-
-		bool empty() const;
-		void clear();
-		u64 size() const;
-
-		void swap(u64, u64);
-		void reverse();
-		void unique(const ty&);
-
-		iterator<ty> begin();
-		iterator<ty> end();
-
-		const_iterator<ty> cbegin() const;
-		const_iterator<ty> cend() const;
-
-		reverse_iterator<iterator<ty>> rbegin();
-		reverse_iterator<iterator<ty>> rend();
-
-		reverse_iterator<const_iterator<ty>> crbegin();
-		reverse_iterator<const_iterator<ty>> crend();
-
-
 		struct node
 		{
 			friend contiguous_double_linked_list;
@@ -100,17 +46,60 @@ namespace flx
 			}
 		};
 
+		struct iterator;
+		struct const_iterator;
+		template<typename iter_ty>
+		struct reverse_iterator;
+
+	flx_private:
+		u64 front_idx = NULLNODE;
+		u64 back_idx = NULLNODE;
+		std::vector<node> nodes{};
+
+	flx_public:
+
+		ty& front();
+		ty& back();
+
+		void push_back(const ty&);
+		ty pop_back();
+		void push_front(const ty&);
+		ty pop_front();
+		iterator insert(const const_iterator&, const ty&);
+		iterator erase(const const_iterator&);
+		iterator erase(const const_iterator&, const const_iterator&);
+
+		bool empty() const;
+		void clear();
+		u64 size() const;
+
+		void swap(const const_iterator&, const const_iterator&);
+		void reverse();
+		void unique(const ty&);
+
+		iterator begin();
+		iterator end();
+
+		const_iterator cbegin() const;
+		const_iterator cend() const;
+
+		reverse_iterator<iterator> rbegin();
+		reverse_iterator<iterator> rend();
+
+		reverse_iterator<const_iterator> crbegin();
+		reverse_iterator<const_iterator> crend();	
+
 		struct iterator
 		{
 			friend contiguous_double_linked_list;
 
 		flx_private:
-			std::vector<node<ty>>& nodes;
+			std::vector<node>& nodes;
 			u64 current_idx = NULLNODE;
 
 		flx_public:
 
-			iterator(std::vector<node<ty>>& ref, u64 idx)
+			iterator(std::vector<node>& ref, u64 idx)
 				: nodes(ref), current_idx(idx)
 			{
 			}
@@ -120,21 +109,21 @@ namespace flx
 				return nodes[current_idx].data;
 			}
 
-			iterator<ty>& operator ++ () // prefix ++
+			iterator& operator ++ () // prefix ++
 			{
 				current_idx = nodes[current_idx].next;
 				return *this;
 			}
 
-			iterator<ty>& operator -- () // prefix --
+			iterator& operator -- () // prefix --
 			{
 				current_idx = nodes[current_idx].prev;
 				return *this;
 			}
 
-			iterator<ty> operator + (u64 offset) const
+			iterator operator + (u64 offset) const
 			{
-				iterator<ty> result(*this);
+				iterator result(*this);
 				while (offset-- > 0)
 				{
 					++result;
@@ -142,9 +131,9 @@ namespace flx
 				return result;
 			}
 
-			iterator<ty> operator - (u64 offset) const
+			iterator operator - (u64 offset) const
 			{
-				iterator<ty> result(*this);
+				iterator result(*this);
 				while (offset-- > 0)
 				{
 					--result;
@@ -163,17 +152,19 @@ namespace flx
 			}
 		};
 
+
+
 		struct const_iterator
 		{
 			friend contiguous_double_linked_list;
 
 		flx_private:
-			const std::vector<node<ty>>& nodes;
+			const std::vector<node>& nodes;
 			u64 current_idx = NULLNODE;
 
 		flx_public:
 
-			const_iterator(const std::vector<node<ty>>& ref, u64 idx)
+			const_iterator(const std::vector<node>& ref, u64 idx)
 				: nodes(ref), current_idx(idx)
 			{
 			}
@@ -183,21 +174,21 @@ namespace flx
 				return nodes[current_idx].data;
 			}
 
-			const_iterator<ty>& operator ++ () // prefix ++
+			const_iterator& operator ++ () // prefix ++
 			{
 				current_idx = nodes[current_idx].next;
 				return *this;
 			}
 
-			const_iterator<ty>& operator -- () // prefix --
+			const_iterator& operator -- () // prefix --
 			{
 				current_idx = nodes[current_idx].prev;
 				return *this;
 			}
 
-			const_iterator<ty> operator + (u64 offset) const
+			const_iterator operator + (u64 offset) const
 			{
-				const_iterator<ty> result(*this);
+				const_iterator result(*this);
 				while (offset-- > 0)
 				{
 					++result;
@@ -205,9 +196,9 @@ namespace flx
 				return result;
 			}
 
-			const_iterator<ty> operator - (u64 offset) const
+			const_iterator operator - (u64 offset) const
 			{
-				const_iterator<ty> result(*this);
+				const_iterator result(*this);
 				while (offset-- > 0)
 				{
 					--result;
@@ -215,16 +206,18 @@ namespace flx
 				return result;
 			}
 
-			bool operator == (const const_iterator<ty>& other) const
+			bool operator == (const const_iterator& other) const
 			{
 				return current_idx == other.current_idx && &nodes == &other.nodes;
 			}
 
-			bool operator != (const const_iterator<ty>& other) const
+			bool operator != (const const_iterator& other) const
 			{
 				return current_idx != other.current_idx || &nodes != &other.nodes;;
 			}
 		};
+
+
 
 		template<typename iter_ty>
 		struct reverse_iterator
@@ -273,17 +266,24 @@ namespace flx
 				return result;
 			}
 
-			ty operator * ()
+			// I hope this works
+
+			ty& operator*()
 			{
 				return *iter;
 			}
 
-			bool operator == (const iter_ty& other) const
+			const ty& operator*() const
+			{
+				return *iter;
+			}
+
+			bool operator == (const reverse_iterator<iter_ty>& other) const
 			{
 				return iter.iter == other.iter;
 			}
 
-			bool operator != (const iter_ty& other) const
+			bool operator != (const reverse_iterator<iter_ty>& other) const
 			{
 				return iter.iter != other.iter;
 			}
@@ -333,14 +333,24 @@ namespace flx
 	template<typename ty>
 	inline ty contiguous_double_linked_list<ty>::pop_back()
 	{
-		assert(size() > 0 && "pop_back called on empty list");
+		assert(!empty() && "pop_back called on empty list");
 
-		ty value = nodes[back_idx];
+		ty value = nodes[back_idx].data;
 
 		if (size() == 1)
 		{
 			clear();
 			return value;
+		}
+
+		// updating back node's neighbours
+		if (nodes.back().prev != NULLNODE)
+		{
+			nodes[nodes.back().prev].next = back_idx;
+		}
+		if (nodes.back().next != NULLNODE)
+		{
+			nodes[nodes.back().next].prev = back_idx;
 		}
 
 		// moves back node to be actually at back
@@ -388,14 +398,24 @@ namespace flx
 	template<typename ty>
 	inline ty contiguous_double_linked_list<ty>::pop_front()
 	{
-		assert(size() > 0 && "pop_front called on empty list");
+		assert(!empty() && "pop_front called on empty list");
 
-		ty value = nodes[front_idx];
+		ty value = nodes[front_idx].data;
 
 		if (size() == 1)
 		{
 			clear();
 			return value;
+		}
+
+		// updating back node's neighbours
+		if (nodes.back().prev != NULLNODE)
+		{
+			nodes[nodes.back().prev].next = front_idx;
+		}
+		if (nodes.back().next != NULLNODE)
+		{
+			nodes[nodes.back().next].prev = front_idx;
 		}
 
 		// moves front node to be actually at back
@@ -414,36 +434,37 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::iterator<ty> contiguous_double_linked_list<ty>::insert(const const_iterator<ty>& where, const ty& value)
+	inline contiguous_double_linked_list<ty>::iterator contiguous_double_linked_list<ty>::insert(const contiguous_double_linked_list<ty>::const_iterator& where, const ty& value)
 	{
+		assert(!empty() && "insert attempt on empty list");
 		assert(where.current_idx < size() && "insert pos is out of bounds");
 		assert(where.nodes == nodes && "insert iterator is from other list");
 		
-		u64 new_idx = nodes.size();
-		nodes.emplace_back(value);
-
 		if (where.current_idx == front_idx)
 		{
 			push_front(value);
 			return;
 		}
 
+		u64 new_idx = nodes.size();
+		nodes.emplace_back(value);
+
 		nodes[new_idx].next = where.current_idx;
 		nodes[new_idx].prev = nodes[where.current_idx].prev;
 		nodes[nodes[where.current_idx].prev].next = new_idx;
 		nodes[where.current_idx].prev = new_idx;
 
-		return iterator<ty>(nodes, new_idx);
+		return iterator(nodes, new_idx);
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::iterator<ty> contiguous_double_linked_list<ty>::erase(const const_iterator<ty>& where)
+	inline contiguous_double_linked_list<ty>::iterator contiguous_double_linked_list<ty>::erase(const contiguous_double_linked_list<ty>::const_iterator& where)
 	{
-		assert(size() > 0 && "erase attempt on empty list");
+		assert(!empty() && "erase attempt on empty list");
 		assert(where.current_idx < size() && "erase pos is out of bounds");
 		assert(where.nodes == nodes && "erase iterator is from other list");
 
-		iterator<ty> return_iter(nodes, nodes[where.current_idx].next);
+		iterator return_iter(nodes, nodes[where.current_idx].next);
 
 		if (where.current_idx == front_idx)
 		{
@@ -456,8 +477,19 @@ namespace flx
 			return return_iter;
 		}
 
+		// updating erased node's neighbours
 		nodes[nodes[where.current_idx].next].prev = nodes[where.current_idx].prev;
 		nodes[nodes[where.current_idx].prev].next = nodes[where.current_idx].next;
+		// updating back node's neighbours
+		if (nodes.back().prev != NULLNODE)
+		{
+			nodes[nodes.back().prev].next = where.current_idx;
+		}
+		if (nodes.back().next != NULLNODE)
+		{
+			nodes[nodes.back().next].prev = where.current_idx;
+		}
+
 		std::swap(nodes[where.current_idx], nodes.back());
 		nodes.pop_back();
 
@@ -465,13 +497,13 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::iterator<ty> contiguous_double_linked_list<ty>::erase(const const_iterator<ty>& first, const const_iterator<ty>& last)
+	inline contiguous_double_linked_list<ty>::iterator contiguous_double_linked_list<ty>::erase(const contiguous_double_linked_list<ty>::const_iterator& first, const contiguous_double_linked_list<ty>::const_iterator& last)
 	{
-		assert(size() > 0 && "erase attempt on empty list");
+		assert(!empty() && "erase attempt on empty list");
 		assert(first.current_idx < size() && "erase first iterator is out of bounds");
 		assert(last.current_idx == NULLNODE || last.current_idx < size() && "erase last iterator is out of bounds");
-		assert(first.nodes == nodes && "erase first iterator is from other list");
-		assert(last.nodes == nodes && "erase last iterator is from other list");
+		assert(&first.nodes == &nodes && "erase first iterator is from other list");
+		assert(&last.nodes == &nodes && "erase last iterator is from other list");
 
 		u64 pos = first.current_idx;
 
@@ -497,7 +529,7 @@ namespace flx
 			nodes[back_idx].next = NULLNODE;
 		}
 
-		// erasing chunk in the middle, both node recconections are required
+		// erasing chunk in the middle, both node reconnections are required
 		if (first.current_idx != front_idx && last.current_idx != NULLNODE)
 		{
 			nodes[nodes[first.current_idx].prev].next = last.current_idx; // since `last` won't get erased
@@ -505,19 +537,29 @@ namespace flx
 		}
 
 		u64 distance = 0;
-		u64 left_idx = nodes[pos].prev;
-		u64 right_idx = last.current_idx;
+		/*u64 left_idx = nodes[pos].prev;
+		u64 right_idx = last.current_idx;*/
 
 		while (pos != last.current_idx)
 		{
+			// updating back node's neigbours
+			if (nodes[nodes.size() - 1 - distance].prev != NULLNODE)
+			{
+				nodes[nodes[nodes.size() - 1 - distance].prev].next = pos;
+			}
+			if (nodes[nodes.size() - 1 - distance].next != NULLNODE)
+			{
+				nodes[nodes[nodes.size() - 1 - distance].next].prev = pos;
+			}
+
 			std::swap(nodes[pos], nodes[nodes.size() - 1 - distance]);
 			++distance;
-			++pos;
+			pos = nodes[pos].next;
 		}
 
 		nodes.erase(nodes.end() - distance, nodes.end());
 
-		return last;
+		return { nodes, last.current_idx };
 	}
 
 	template<typename ty>
@@ -541,26 +583,29 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline void contiguous_double_linked_list<ty>::swap(u64 where_a, u64 where_b)
+	inline void contiguous_double_linked_list<ty>::swap(const contiguous_double_linked_list<ty>::const_iterator& where_a, const contiguous_double_linked_list<ty>::const_iterator& where_b)
 	{
-		assert(where_a < size() && where_b < size() && "swap attempt outside of bounds");
+		assert(where_a.current_idx < size() && where_b.current_idx < size() && "swap attempt outside of bounds");
 
-		u64 a_idx = front_idx;
-		u64 b_idx = front_idx;
-
-		while (where_a > 0)
+		if (nodes[where_a.current_idx].prev != NULLNODE)
 		{
-			a_idx = nodes[a_idx].next;
-			--where_a;
+			nodes[nodes[where_a.current_idx].prev].next = where_b.current_idx;
+		}
+		if (nodes[where_a.current_idx].next != NULLNODE)
+		{
+			nodes[nodes[where_a.current_idx].next].prev = where_b.current_idx;
+		}
+		if (nodes[where_b.current_idx].prev != NULLNODE)
+		{
+			nodes[nodes[where_b.current_idx].prev].next = where_a.current_idx;
+		}
+		if (nodes[where_b.current_idx].next != NULLNODE)
+		{
+			nodes[nodes[where_b.current_idx].next].prev = where_a.current_idx;
 		}
 
-		while (where_b > 0)
-		{
-			b_idx = nodes[b_idx].next;
-			--where_b;
-		}
-
-		std::swap(nodes[a_idx], nodes[b_idx]);
+		std::swap(nodes[where_a.current_idx], nodes[where_b.current_idx]);
+		return;
 	}
 
 	template<typename ty>
@@ -575,7 +620,7 @@ namespace flx
 
 	template<typename ty>
 	inline void contiguous_double_linked_list<ty>::unique(const ty& value)
-	{
+	{// something is wrong here logically
 		u64 value_idx = front_idx;
 		u64 erased_amount = 0;
 
@@ -613,6 +658,16 @@ namespace flx
 					nodes[nodes[value_idx].next].prev = nodes[value_idx].prev;
 				}
 
+				// updating future moving node's neighbours
+				if (nodes[nodes.size() - 1 - erased_amount].prev != NULLNODE)
+				{
+					nodes[nodes[nodes.size() - 1 - erased_amount].prev].next = value_idx;
+				}
+				if (nodes[nodes.size() - 1 - erased_amount].next != NULLNODE)
+				{
+					nodes[nodes[nodes.size() - 1 - erased_amount].next].prev = value_idx;
+				}
+
 				std::swap(nodes[value_idx], nodes[nodes.size() - 1 - erased_amount]);
 				++erased_amount;
 			}
@@ -624,50 +679,50 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::iterator<ty> contiguous_double_linked_list<ty>::begin()
+	inline contiguous_double_linked_list<ty>::iterator contiguous_double_linked_list<ty>::begin()
 	{
-		return iterator<ty>(nodes, front_idx);
+		return iterator(nodes, front_idx);
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::iterator<ty> contiguous_double_linked_list<ty>::end()
+	inline contiguous_double_linked_list<ty>::iterator contiguous_double_linked_list<ty>::end()
 	{
-		return iterator<ty>(nodes, NULLNODE);
+		return iterator(nodes, NULLNODE);
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::const_iterator<ty> contiguous_double_linked_list<ty>::cbegin() const
+	inline contiguous_double_linked_list<ty>::const_iterator contiguous_double_linked_list<ty>::cbegin() const
 	{
-		return const_iterator<ty>(nodes, front_idx);
+		return const_iterator(nodes, front_idx);
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::const_iterator<ty> contiguous_double_linked_list<ty>::cend() const
+	inline contiguous_double_linked_list<ty>::const_iterator contiguous_double_linked_list<ty>::cend() const
 	{
-		return const_iterator<ty>(nodes, NULLNODE);
+		return const_iterator(nodes, NULLNODE);
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator<ty>> contiguous_double_linked_list<ty>::rbegin()
+	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator> contiguous_double_linked_list<ty>::rbegin()
 	{
-		return reverse_iterator<iterator<ty>>(iterator<ty>(nodes, back_idx));
+		return reverse_iterator<iterator>(iterator(nodes, back_idx));
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator<ty>> contiguous_double_linked_list<ty>::rend()
+	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::iterator> contiguous_double_linked_list<ty>::rend()
 	{
-		return reverse_iterator<iterator<ty>>(iterator<ty>(nodes, NULLNODE));
+		return reverse_iterator<iterator>(iterator(nodes, NULLNODE));
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator<ty>> contiguous_double_linked_list<ty>::crbegin()
+	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator> contiguous_double_linked_list<ty>::crbegin()
 	{
-		return reverse_iterator<const_iterator<ty>>(iterator<ty>(nodes, back_idx));
+		return reverse_iterator<const_iterator>(const_iterator(nodes, back_idx));
 	}
 
 	template<typename ty>
-	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator<ty>> contiguous_double_linked_list<ty>::crend()
+	inline contiguous_double_linked_list<ty>::reverse_iterator<typename contiguous_double_linked_list<ty>::const_iterator> contiguous_double_linked_list<ty>::crend()
 	{
-		return reverse_iterator<const_iterator<ty>>(iterator<ty>(nodes, NULLNODE));
+		return reverse_iterator<const_iterator>(const_iterator(nodes, NULLNODE));
 	}
 }
