@@ -89,6 +89,15 @@ namespace flx
 		reverse_iterator<const_iterator> crbegin() const;
 		reverse_iterator<const_iterator> crend() const;	
 
+	flx_private:
+		/// <summary>
+		/// Moves erased element at the iterator to the back of a vector.
+		/// Return iterator pointing where erased node was moved, in a way, fixing `erased` iterator.
+		/// </summary>
+		iterator imp_move_erased(const const_iterator&, const const_iterator&);
+
+	flx_public:
+
 		struct iterator
 		{
 			friend contiguous_doubly_linked_list;
@@ -104,24 +113,37 @@ namespace flx
 			{
 			}
 
+			iterator(const reverse_iterator<iterator>& other)
+				: nodes(other.iter.nodes), current_idx(other.iter.current_idx)
+			{
+			}
+
 			ty& operator * ()
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on retrieving from NULLNODE");
+
 				return nodes[current_idx].data;
 			}
 
 			ty* operator -> ()
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on retrieving from NULLNODE");
+
 				return &nodes[current_idx].data;
 			}
 
 			iterator& operator ++ () // prefix ++
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on ++ from NULLNODE");
+
 				current_idx = nodes[current_idx].next;
 				return *this;
 			}
 
 			iterator& operator -- () // prefix --
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on -- from NULLNODE");
+
 				current_idx = nodes[current_idx].prev;
 				return *this;
 			}
@@ -158,11 +180,20 @@ namespace flx
 
 			u64 prev_idx() const
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on prev_idx() from NULLNODE");
+
 				return nodes[current_idx].prev;
 			}
 			u64 next_idx() const
 			{
+				assert(current_idx != NULLNODE && "iterator attempt on next_idx() from NULLNODE");
+
 				return nodes[current_idx].next;
+			}
+
+			void operator = (const iterator& other)
+			{
+				current_idx = other.current_idx;
 			}
 		}; // iterator
 
@@ -186,24 +217,39 @@ namespace flx
 			{
 			}
 
+			const_iterator(const reverse_iterator<iterator>& other)
+				: nodes(other.iter.nodes), current_idx(other.iter.current_idx)
+			{
+			}
+
+			const_iterator(const reverse_iterator<const_iterator>& other)
+				: nodes(other.iter.nodes), current_idx(other.iter.current_idx)
+			{
+			}
+
 			const ty& operator * () const
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on retrieving from NULLNODE");
+
 				return nodes[current_idx].data;
 			}
 
 			const ty* operator -> () const
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on retrieving from NULLNODE");
 				return &nodes[current_idx].data;
 			}
 
 			const_iterator& operator ++ () // prefix ++
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on ++ from NULLNODE");
 				current_idx = nodes[current_idx].next;
 				return *this;
 			}
 
 			const_iterator& operator -- () // prefix --
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on -- from NULLNODE");
 				current_idx = nodes[current_idx].prev;
 				return *this;
 			}
@@ -240,11 +286,18 @@ namespace flx
 
 			u64 prev_idx() const
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on prev_idx() from NULLNODE");
 				return nodes[current_idx].prev;
 			}
 			u64 next_idx() const
 			{
+				assert(current_idx != NULLNODE && "const_iterator attempt on next_idx() from NULLNODE");
 				return nodes[current_idx].next;
+			}
+
+			void operator = (const const_iterator& other)
+			{
+				current_idx = other.current_idx;
 			}
 		}; // const_iterator
 
@@ -333,15 +386,12 @@ namespace flx
 			{
 				return nodes[iter.current_idx].prev;
 			}
+
+			void operator = (const reverse_iterator<iter_ty>& other)
+			{
+				iter.current_idx = other.iter.current_idx;
+			}
 		}; // reverse_iterator
-
-	flx_private:
-
-		/// <summary>
-		/// Moves erased element at the iterator to the back of a vector.
-		/// Also changes the first input iterator, because nodes were moved.
-		/// </summary>
-		void imp_move_erased(const_iterator&, const const_iterator&);
 	}; // contiguous_doubly_linked_list
 
 
@@ -391,7 +441,7 @@ namespace flx
 		}
 
 		imp_move_erased(end(), { nodes, nodes.size() - 1 });
-		back_idx = nodes[back_idx].prev;
+		//back_idx = nodes[back_idx].prev;
 		nodes.pop_back();
 
 		return value;
@@ -431,7 +481,7 @@ namespace flx
 		}
 
 		imp_move_erased(begin(), { nodes, nodes.size() - 1 });
-		front_idx = nodes.back().next;
+		//front_idx = nodes.back().next;
 		nodes.pop_back();
 
 		return value;
@@ -470,7 +520,7 @@ namespace flx
 
 		iterator return_iter(nodes, where.next_idx());
 
-		if (where.current_idx == front_idx)
+		/*if (where.current_idx == front_idx)
 		{
 			pop_front();
 			return return_iter;
@@ -479,7 +529,7 @@ namespace flx
 		{
 			pop_back();
 			return return_iter;
-		}
+		}*/
 
 		imp_move_erased(where, { nodes, nodes.size() - 1 });
 		nodes.pop_back();
@@ -502,21 +552,21 @@ namespace flx
 			return end();
 		}
 
-		if (first.current_idx == front_idx)
+		/*if (first.current_idx == front_idx)
 		{
 			front_idx = last.current_idx;
 		}
 		if (last.current_idx == NULLNODE)
 		{
 			back_idx = first.prev_idx();
-		}
+		}*/
 
 		const_iterator it = first;
 		u64 distance = 0;
 
 		while (it != last)
 		{
-			imp_move_erased(it, { nodes, nodes.size() - 1 - distance });
+			it = imp_move_erased(it, { nodes, nodes.size() - 1 - distance });
 			++it;
 			++distance;
 		}
@@ -568,9 +618,7 @@ namespace flx
 	template<typename ty>
 	inline void contiguous_doubly_linked_list<ty>::unique(const ty& value)
 	{
-		u64 erased_amount = 0;
-
-		iterator it = begin();
+		const_iterator it = cbegin();
 
 		while (it.current_idx != NULLNODE && *it != value)
 		{
@@ -580,22 +628,20 @@ namespace flx
 		{
 			return;
 		}
+		++it;
 
-		for (; it.current_idx != back_idx; ++it)
+		u64 erased_amount = 0;
+
+		for (; it != cend(); ++it)
 		{
 			if (*it == value)
 			{
-				imp_move_erased(it, { nodes, nodes.size() - 1 - erased_amount });
+				it = imp_move_erased(it, { nodes, nodes.size() - 1 - erased_amount });
 				++erased_amount;
 			}
 		}
 
 		nodes.erase(nodes.end() - erased_amount, nodes.end());
-
-		if (*it == value)
-		{
-			pop_back();
-		}
 
 		return;
 	}
@@ -649,9 +695,43 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline void contiguous_doubly_linked_list<ty>::imp_move_erased(contiguous_doubly_linked_list<ty>::const_iterator& erased, const contiguous_doubly_linked_list<ty>::const_iterator& dest)
+	inline contiguous_doubly_linked_list<ty>::iterator contiguous_doubly_linked_list<ty>::imp_move_erased(const contiguous_doubly_linked_list<ty>::const_iterator& erased, const contiguous_doubly_linked_list<ty>::const_iterator& dest)
 	{
-		// order of these matter in case if `back` node is an erased one
+		if (erased.next_idx() != NULLNODE)
+		{
+			nodes[erased.next_idx()].prev = erased.prev_idx();
+			if (erased.current_idx == front_idx)
+			{
+				front_idx = erased.next_idx();
+			}
+		}
+		if (erased.prev_idx() != NULLNODE)
+		{
+			nodes[erased.prev_idx()].next = erased.next_idx();
+			if (erased.current_idx == back_idx)
+			{
+				back_idx = erased.prev_idx();
+			}
+		}
+
+		if (erased == dest)
+		{
+			return { nodes, dest.current_idx };
+		}
+
+		// to fix returned iterator
+		nodes[erased.current_idx].next = erased.current_idx;
+		nodes[erased.current_idx].prev = erased.current_idx;
+
+		if (dest.current_idx == back_idx)
+		{
+			back_idx = erased.current_idx;
+		}
+		if (dest.current_idx == front_idx)
+		{
+			front_idx = erased.current_idx;
+		}
+
 		if (dest.next_idx() != NULLNODE)
 		{
 			nodes[dest.next_idx()].prev = erased.current_idx;
@@ -660,18 +740,9 @@ namespace flx
 		{
 			nodes[dest.prev_idx()].next = erased.current_idx;
 		}
-		if (erased.next_idx() != NULLNODE)
-		{
-			nodes[erased.next_idx()].prev = erased.prev_idx();
-		}
-		if (erased.prev_idx() != NULLNODE)
-		{
-			nodes[erased.prev_idx()].next = erased.next_idx();
-		}
 
 		std::swap(nodes[erased.current_idx], nodes[dest.current_idx]);
-		erased.current_idx = dest.current_idx;
 
-		return;
+		return { nodes, dest.current_idx };
 	}
 }

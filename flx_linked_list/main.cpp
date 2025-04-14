@@ -10,6 +10,11 @@ int main()
 	{
 		a.push_back(c++);
 	}
+	for (size_t i = 0; i < 40; i++)
+	{
+		a.push_back('b');
+	}
+	//a.push_back('a');
 
 	/*a.front();
 	a.back();
@@ -30,9 +35,25 @@ int main()
 	}
 	std::cout << '\n';
 
-	a.erase(a.begin() + 1, a.begin() + 3);
+	//a.erase(a.begin() + 1, a.begin() + 3);
 
 	//a.erase(a.begin() + 1);
+
+	/*for (char it : a)
+	{
+		std::cout << it << ' ';
+	}
+	std::cout << '\n';*/
+
+	a.unique('b');
+
+	for (char it : a)
+	{
+		std::cout << it << ' ';
+	}
+	std::cout << '\n';
+
+	a.reverse();
 
 	for (char it : a)
 	{
