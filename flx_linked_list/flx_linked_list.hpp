@@ -13,16 +13,16 @@
 /// 
 /// When moving nodes inside std::vector, neigbours should be updated.
 /// 
-/// Because at some time data will be moved, taking pointers from it
-/// is dangerous.
+/// When doing anything, that changes amount of elements or changes their order,
+/// nodes in internal vector will get moved, thus invalidatin all pointers and iterators.
 /// </summary>
 
 namespace flx
 {
 	/// <summary>
-	/// std::vector baked double linked list.
-	/// Be cautious taking pointers of elemts,
-	/// becuase at some point they will be moded.
+	/// An std::vector baked doubly linked list for cache friendliness.
+	/// !!! All iterators and pointers to elements will get invalid after
+	/// any function call that changes amount of elements or changes their order.
 	/// </summary>
 	/// <typeparam name="ty"> - Type of data</typeparam>
 	template<typename ty>
@@ -47,7 +47,7 @@ namespace flx
 		};
 
 		struct iterator;
-		struct const_iterator; // const is `.data`, `.next` and `.prev` are non-const
+		struct const_iterator;
 		template<typename iter_ty>
 		struct reverse_iterator;
 
@@ -166,9 +166,6 @@ namespace flx
 			}
 		}; // iterator
 
-		/// <summary>
-		/// Allows modifications to `nodes`, but not `.data`
-		/// </summary>
 		struct const_iterator
 		{
 			friend contiguous_doubly_linked_list;
@@ -298,8 +295,6 @@ namespace flx
 				return result;
 			}
 
-			// I hope this works
-
 			ty& operator*()
 			{
 				return *iter;
@@ -342,9 +337,11 @@ namespace flx
 
 	flx_private:
 
-		// moves `erased` to `dest` with detaching `erased` and reconnecting `dest`
-		// DOES NOT UPDATE FRONT_IDX AND BACK_IDX
-		void imp_move_erased(const const_iterator&, const const_iterator&);
+		/// <summary>
+		/// Moves erased element at the iterator to the back of a vector.
+		/// Also changes the first input iterator, because nodes were moved.
+		/// </summary>
+		void imp_move_erased(const_iterator&, const const_iterator&);
 	}; // contiguous_doubly_linked_list
 
 
@@ -372,13 +369,6 @@ namespace flx
 			back_idx= new_idx;
 			return;
 		}
-		/*if (new_idx == 1) // already enforced
-		{
-			back_idx = new_idx;
-			nodes[front_idx].next = new_idx;
-			nodes[back_idx].prev = front_idx;
-			return;
-		}*/
 
 		nodes[back_idx].next = new_idx;
 		nodes[new_idx].prev = back_idx;
@@ -403,12 +393,6 @@ namespace flx
 		imp_move_erased(end(), { nodes, nodes.size() - 1 });
 		back_idx = nodes[back_idx].prev;
 		nodes.pop_back();
-
-		/*if (size() == 1) // already enforced
-		{
-			nodes[front_idx].next = NULLNODE;
-			nodes[front_idx].prev = NULLNODE;
-		}*/
 
 		return value;
 	}
@@ -540,62 +524,6 @@ namespace flx
 		nodes.erase(nodes.end() - distance, nodes.end());
 
 		return { nodes, last.current_idx };
-
-		//u64 pos = first.current_idx;
-
-		//if (first.current_idx == front_idx && last.current_idx == NULLNODE)
-		//{
-		//	clear();
-		//	return end();
-		//}
-
-		//// erasing from `front_idx`, only one node reconnection needed
-		//if (first.current_idx == front_idx)
-		//{
-		//	// `last` garanteed to be not `NULLNODE`
-		//	front_idx = last.current_idx; // since `last` won't get erased
-		//	nodes[front_idx].prev = NULLNODE;
-		//}
-
-		//// erasing from `back_idx`, only one node reconnection needed
-		//if (last.current_idx == NULLNODE)
-		//{
-		//	// `first` garanteed to be not `front_idx`
-		//	back_idx = nodes[first.current_idx].prev;
-		//	nodes[back_idx].next = NULLNODE;
-		//}
-
-		//// erasing chunk in the middle, both node reconnections are required
-		//if (first.current_idx != front_idx && last.current_idx != NULLNODE)
-		//{
-		//	nodes[nodes[first.current_idx].prev].next = last.current_idx; // since `last` won't get erased
-		//	nodes[last.current_idx].prev = nodes[first.current_idx].prev; // since `last` won't get erased
-		//}
-
-		//u64 distance = 0;
-		///*u64 left_idx = nodes[pos].prev;
-		//u64 right_idx = last.current_idx;*/
-
-		//while (pos != last.current_idx)
-		//{
-		//	// updating back node's neigbours
-		//	if (nodes[nodes.size() - 1 - distance].prev != NULLNODE)
-		//	{
-		//		nodes[nodes[nodes.size() - 1 - distance].prev].next = pos;
-		//	}
-		//	if (nodes[nodes.size() - 1 - distance].next != NULLNODE)
-		//	{
-		//		nodes[nodes[nodes.size() - 1 - distance].next].prev = pos;
-		//	}
-
-		//	std::swap(nodes[pos], nodes[nodes.size() - 1 - distance]);
-		//	++distance;
-		//	pos = nodes[pos].next;
-		//}
-
-		//nodes.erase(nodes.end() - distance, nodes.end());
-
-		//return { nodes, last.current_idx };
 	}
 
 	template<typename ty>
@@ -623,24 +551,7 @@ namespace flx
 	{
 		assert(where_a.current_idx < size() && where_b.current_idx < size() && "swap attempt outside of bounds");
 
-		if (where_a.prev_idx() != NULLNODE)
-		{
-			nodes[where_a.prev_idx()].next = where_b.current_idx;
-		}
-		if (where_a.next_idx() != NULLNODE)
-		{
-			nodes[where_a.next_idx()].prev = where_b.current_idx;
-		}
-		if (where_b.prev_idx() != NULLNODE)
-		{
-			nodes[where_b.prev_idx()].next = where_a.current_idx;
-		}
-		if (where_b.next_idx() != NULLNODE)
-		{
-			nodes[where_b.next_idx()].prev = where_a.current_idx;
-		}
-
-		std::swap(nodes[where_a.current_idx], nodes[where_b.current_idx]);
+		std::swap(*where_a, *where_b);
 		return;
 	}
 
@@ -687,63 +598,6 @@ namespace flx
 		}
 
 		return;
-
-		// something is wrong here logically
-		//u64 value_idx = front_idx;
-		//u64 erased_amount = 0;
-
-		//while (value_idx != NULLNODE && nodes[value_idx].data != value)
-		//{
-		//	value_idx = nodes[value_idx].next;
-		//}
-		//if (value_idx == NULLNODE)
-		//{
-		//	return;
-		//}
-
-		//// dont need to worry about `front_idx`
-		//while (back_idx != NULLNODE && nodes[back_idx].data == value)
-		//{
-		//	back_idx = nodes[back_idx].prev;
-		//}
-		//if (back_idx == NULLNODE)
-		//{
-		//	clear();
-		//	return;
-		//}
-
-		//value_idx = nodes[value_idx].next;
-
-		//while (value_idx != NULLNODE)
-		//{
-		//	if (nodes[value_idx].data == value)
-		//	{
-		//		// no need to check for `prev`, it will always be there
-		//		nodes[nodes[value_idx].prev].next = nodes[value_idx].next;
-
-		//		if (nodes[value_idx].next != NULLNODE)
-		//		{
-		//			nodes[nodes[value_idx].next].prev = nodes[value_idx].prev;
-		//		}
-
-		//		// updating future moving node's neighbours
-		//		if (nodes[nodes.size() - 1 - erased_amount].prev != NULLNODE)
-		//		{
-		//			nodes[nodes[nodes.size() - 1 - erased_amount].prev].next = value_idx;
-		//		}
-		//		if (nodes[nodes.size() - 1 - erased_amount].next != NULLNODE)
-		//		{
-		//			nodes[nodes[nodes.size() - 1 - erased_amount].next].prev = value_idx;
-		//		}
-
-		//		std::swap(nodes[value_idx], nodes[nodes.size() - 1 - erased_amount]);
-		//		++erased_amount;
-		//	}
-		//	value_idx = nodes[value_idx].next;
-		//}
-
-		//nodes.erase(nodes.end() - erased_amount, nodes.end());
-		//return;
 	}
 
 	template<typename ty>
@@ -795,7 +649,7 @@ namespace flx
 	}
 
 	template<typename ty>
-	inline void contiguous_doubly_linked_list<ty>::imp_move_erased(const contiguous_doubly_linked_list<ty>::const_iterator& erased, const contiguous_doubly_linked_list<ty>::const_iterator& dest)
+	inline void contiguous_doubly_linked_list<ty>::imp_move_erased(contiguous_doubly_linked_list<ty>::const_iterator& erased, const contiguous_doubly_linked_list<ty>::const_iterator& dest)
 	{
 		// order of these matter in case if `back` node is an erased one
 		if (dest.next_idx() != NULLNODE)
@@ -816,6 +670,7 @@ namespace flx
 		}
 
 		std::swap(nodes[erased.current_idx], nodes[dest.current_idx]);
+		erased.current_idx = dest.current_idx;
 
 		return;
 	}
