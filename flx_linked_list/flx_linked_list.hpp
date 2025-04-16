@@ -3,7 +3,9 @@
 #include <cassert>
 #include <vector>
 
-#include "flx_types.hpp"
+#include <iostream>
+
+#include "D:\C++\Tools\flx_types.hpp"
 
 /// <summary>
 /// This double linked list is backed by an std::vector
@@ -76,6 +78,12 @@ namespace flx
 		void swap(const const_iterator&, const const_iterator&);
 		void reverse();
 		void unique(const ty&);
+
+		u64 capacity() const;
+		void reserve(u64);
+		void shrink_to_fit();
+		node* data();
+		const node* data() const;
 
 		iterator begin();
 		iterator end();
@@ -601,7 +609,7 @@ namespace flx
 	{
 		assert(where_a.current_idx < size() && where_b.current_idx < size() && "swap attempt outside of bounds");
 
-		std::swap(*where_a, *where_b);
+		std::swap(nodes[where_a.current_idx].data, nodes[where_b.current_idx].data);
 		return;
 	}
 
@@ -634,6 +642,8 @@ namespace flx
 
 		for (; it != cend(); ++it)
 		{
+			std::cout << "it = " << it.current_idx << '\n';
+
 			if (*it == value)
 			{
 				it = imp_move_erased(it, { nodes, nodes.size() - 1 - erased_amount });
@@ -644,6 +654,38 @@ namespace flx
 		nodes.erase(nodes.end() - erased_amount, nodes.end());
 
 		return;
+	}
+
+	template<typename ty>
+	inline u64 flx::contiguous_doubly_linked_list<ty>::capacity() const
+	{
+		return nodes.capacity();
+	}
+
+	template<typename ty>
+	inline void flx::contiguous_doubly_linked_list<ty>::reserve(u64 new_cap)
+	{
+		nodes.reserve(new_cap);
+		return;
+	}
+
+	template<typename ty>
+	inline void flx::contiguous_doubly_linked_list<ty>::shrink_to_fit()
+	{
+		nodes.shrink_to_fit();
+		return;
+	}
+
+	template<typename ty>
+	inline flx::contiguous_doubly_linked_list<ty>::node* flx::contiguous_doubly_linked_list<ty>::data()
+	{
+		return nodes.data();
+	}
+
+	template<typename ty>
+	inline const flx::contiguous_doubly_linked_list<ty>::node* flx::contiguous_doubly_linked_list<ty>::data() const
+	{
+		return nodes.data();
 	}
 
 	template<typename ty>
@@ -719,9 +761,12 @@ namespace flx
 			return { nodes, dest.current_idx };
 		}
 
-		// to fix returned iterator
-		nodes[erased.current_idx].next = erased.current_idx;
-		nodes[erased.current_idx].prev = erased.current_idx;
+		// to fix returned iterator in case if `erased` and `dest` are neighbours
+		if (erased.next_idx() == dest.current_idx || erased.prev_idx() == dest.current_idx)
+		{
+			nodes[erased.current_idx].next = erased.current_idx;
+			nodes[erased.current_idx].prev = erased.current_idx;
+		}
 
 		if (dest.current_idx == back_idx)
 		{
